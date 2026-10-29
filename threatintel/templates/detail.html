@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ vuln.cve_id }}{% endblock %}
+{% block content %}
+  <h1>{{ vuln.cve_id }}</h1>
+  <p class="lead">{{ vuln.name }}</p>
+  {% if nvd_unavailable %}
+    <div class="alert alert-warning">NVD data is unavailable right now. Showing KEV data only.</div>
+  {% endif %}
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="h4">KEV</h2>
+      <dl>
+        <dt>Vendor</dt><dd>{{ vuln.vendor }}</dd>
+        <dt>Product</dt><dd>{{ vuln.product }}</dd>
+        <dt>Description</dt><dd>{{ vuln.short_description }}</dd>
+        <dt>Date added</dt><dd>{{ vuln.date_added }}</dd>
+        <dt>Due date</dt><dd>{{ vuln.due_date }}</dd>
+        <dt>Known ransomware use</dt><dd>{{ vuln.ransomware_use|yesno:"Yes,No" }}</dd>
+        <dt>CWEs</dt><dd>{{ vuln.cwes|default:"None listed" }}</dd>
+      </dl>
+    </div>
+    <div class="col-md-6">
+      <h2 class="h4">NVD</h2>
+      <dl>
+        <dt>CVSS score</dt>
+        <dd>{% if vuln.cvss_score is not None %}<span>{{ vuln.cvss_score }} (CVSS v{{ vuln.cvss_version }})</span>{% else %}Not available{% endif %}</dd>
+        <dt>Severity</dt><dd>{{ vuln.cvss_severity|default:"Not available" }}</dd>
+        <dt>Vector</dt><dd>{{ vuln.cvss_vector|default:"Not available" }}</dd>
+        <dt>NVD status</dt><dd>{{ vuln.nvd_status|default:"Not fetched" }}</dd>
+      </dl>
+      <p><a href="https://nvd.nist.gov/vuln/detail/{{ vuln.cve_id }}" rel="noopener noreferrer">View on NVD</a></p>
+    </div>
+  </div>
+  {% with urls=vuln.reference_urls %}
+    {% if urls %}
+      <h2 class="h4">References</h2>
+      <ul>
+        {% for url in urls %}
+          <li><a href="{{ url }}" rel="noopener noreferrer">{{ url }}</a></li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+  {% if user.is_authenticated %}
+    <form method="post" action="/watch/{{ vuln.cve_id }}/add/">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary">Add to watchlist</button>
+    </form>
+  {% endif %}
+{% endblock %}

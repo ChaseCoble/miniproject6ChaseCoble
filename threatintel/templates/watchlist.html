@@ -2,4 +2,42 @@
 {% block title %}Watchlist{% endblock %}
 {% block content %}
   <h1>Watchlist</h1>
+  {% if watches %}
+    <table class="table">
+      <thead><tr><th>CVE</th><th>Note</th><th>Added</th><th></th></tr></thead>
+      <tbody>
+        {% for watch in watches %}
+          <tr>
+            <td><a href="/cve/{{ watch.vulnerability.cve_id }}/">{{ watch.vulnerability.cve_id }}</a></td>
+            <td>{{ watch.note }}</td>
+            <td>{{ watch.created }}</td>
+            <td class="text-end">
+              <a class="btn btn-sm btn-outline-secondary" href="/watch/{{ watch.vulnerability.cve_id }}/edit/">Edit note</a>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delete-{{ forloop.counter }}">Remove</button>
+              <div class="modal fade" id="delete-{{ forloop.counter }}" tabindex="-1" aria-labelledby="delete-{{ forloop.counter }}-title" aria-hidden="true">
+                <div class="modal-dialog">
+                  <div class="modal-content text-start">
+                    <div class="modal-header">
+                      <h2 class="modal-title h5" id="delete-{{ forloop.counter }}-title">Remove {{ watch.vulnerability.cve_id }}?</h2>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">This removes it from your watchlist, along with your note.</div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                      <form method="post" action="/watch/{{ watch.vulnerability.cve_id }}/delete/">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Remove</button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>You aren't watching anything yet. Open a CVE from the dashboard to add it.</p>
+  {% endif %}
 {% endblock %}
