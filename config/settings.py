@@ -14,22 +14,40 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
+def env_flag(name):
+    # Only "1" or "true" (any case) turn a switch on; anything else is off
+    return os.environ.get(name, '').lower() in ('1', 'true')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-t4bkd1*p8stzd@j3%q#ln+u1^tr!fr&n%87d9+#qmrkd+n&jc-'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Everything security-relevant comes from the environment, with no fallback key
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+if len(SECRET_KEY) < 50 or len(set(SECRET_KEY)) < 5 or SECRET_KEY.startswith('django-insecure-'):
+    raise ImproperlyConfigured(
+        'DJANGO_SECRET_KEY must be set to at least 50 characters with at least 5 distinct '
+        'characters, and must not start with django-insecure-'
+    )
 
-ALLOWED_HOSTS = []
+DEBUG = env_flag('DJANGO_DEBUG')
+
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h.strip()]
+if not ALLOWED_HOSTS:
+    raise ImproperlyConfigured('DJANGO_ALLOWED_HOSTS must be set (comma-separated)')
+if '*' in ALLOWED_HOSTS:
+    raise ImproperlyConfigured('DJANGO_ALLOWED_HOSTS must not contain *')
+
+# Kept off the default admin/ path; urls.py mounts the admin here
+ADMIN_URL = os.environ.get('DJANGO_ADMIN_URL', 'staff-console/')
+if not ADMIN_URL.endswith('/') or ADMIN_URL.startswith('/'):
+    raise ImproperlyConfigured('DJANGO_ADMIN_URL must end with / and must not start with /')
 
 
 # Application definition
@@ -120,6 +138,34 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+
+
+# Auth redirects
+LOGIN_URL = '/accounts/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
+
+
+# Cache: database-backed so throttle counts are shared across workers.
+# Needs `python manage.py createcachetable` once.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'threatintel_cache',
+    }
+}
+
+
+# Cookies and security headers
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = env_flag('DJANGO_SECURE_COOKIES')
+CSRF_COOKIE_SECURE = env_flag('DJANGO_SECURE_COOKIES')
+SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '0'))
+SECURE_REFERRER_POLICY = 'same-origin'
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 
 
 # Email
