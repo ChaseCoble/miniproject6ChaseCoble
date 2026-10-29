@@ -11,7 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.http import Http404
+from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods, require_POST
@@ -28,6 +28,7 @@ REGISTER_LIMIT, REGISTER_WINDOW = 5, timedelta(hours=1)
 NVD_LIMIT, NVD_WINDOW = 5, timedelta(seconds=30)
 REFRESH_LIMIT, REFRESH_WINDOW = 1, timedelta(hours=1)
 PAGE_SIZE = 100
+MAX_QUERY = 200
 # App-wide throttles share one key
 GLOBAL = ""
 
@@ -42,16 +43,31 @@ def login_throttle_key(request):
 
 
 class ThrottledLoginView(auth_views.LoginView):
-    # Django's LoginView, with failures counted per username
+    # Django's LoginView, with failures counted per username and per source
+    # address (distinct usernames only, so spraying is caught but one
+    # mistyped account doesn't lock out everyone behind the same address)
     def post(self, request, *args, **kwargs):
         key = login_throttle_key(request)
-        if throttle.is_limited("login", key, LOGIN_LIMIT, LOGIN_WINDOW, services.now()):
+        # REMOTE_ADDR only; X-Forwarded-For is client-controlled
+        address = request.META.get("REMOTE_ADDR", "")
+        now = services.now()
+        if (throttle.is_limited("login", key, LOGIN_LIMIT, LOGIN_WINDOW, now)
+                or throttle.is_limited("login-ip", address, LOGIN_LIMIT, LOGIN_WINDOW, now)):
             # Blocked attempts are not recorded, so the window can't be extended
             return too_many(request)
         return super().post(request, *args, **kwargs)
 
     def form_invalid(self, form):
-        throttle.record("login", login_throttle_key(self.request), services.now())
+        key = login_throttle_key(self.request)
+        address = self.request.META.get("REMOTE_ADDR", "")
+        now = services.now()
+        # The address is charged once per username in the window, so
+        # login-ip counts distinct usernames rather than attempts
+        pair = f"{address}\n{key}"
+        if throttle.count("login-pair", pair, LOGIN_WINDOW, now) == 0:
+            throttle.record("login-ip", address, now)
+        throttle.record("login-pair", pair, now)
+        throttle.record("login", key, now)
         return super().form_invalid(form)
 
 
@@ -74,6 +90,9 @@ def register(request):
 
 def dashboard(request):
     q = request.GET.get("q", "").strip()
+    # Bounded before it reaches the database (SQLite rejects huge LIKE patterns)
+    if len(q) > MAX_QUERY:
+        return HttpResponseBadRequest(f"Search is limited to {MAX_QUERY} characters.")
     # cve_id breaks date ties so rows never shift between pages
     rows = Vulnerability.objects.order_by("-date_added", "cve_id")
     if q:

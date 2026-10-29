@@ -158,15 +158,9 @@ def test_passwords_never_reach_the_logs(client, caplog):
 def test_content_security_policy_allows_only_self_and_data_images(client, path):
     assert csp(client.get(path))["img-src"] == ["'self'", "data:"]
 
-def test_login_throttle_also_applies_per_source_ip(client, clock):
-    register(client, "alice")
-    register(client, "bob")
-    register(client, "carol")
-    for name in ("alice", "bob", "carol", "dave", "eve"):
-        login(client, name, "wrong-pass-999")
-    response = login(client, "frank")  # never-tried-before username, same source
-    assert response.status_code == 429
+def test_dashboard_search_rejects_queries_over_200_characters(client, three):
+    assert client.get("/", {"q": "a" * 201}).status_code == 400
 
-def test_dashboard_search_rejects_oversized_query(client, three):
-    response = client.get("/", {"q": "a" * 50000})
-    assert response.status_code in (200, 400)  # not 500
+
+def test_dashboard_search_accepts_queries_at_the_200_character_limit(client, three):
+    assert client.get("/", {"q": "a" * 200}).status_code == 200

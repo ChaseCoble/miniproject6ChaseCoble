@@ -62,3 +62,5 @@ def test_buckets_are_independent():
 def test_naive_datetimes_are_rejected(call):
     with pytest.raises(ValueError):
         call(T0.replace(tzinfo=None))
+
+

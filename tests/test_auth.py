@@ -317,3 +317,19 @@ def test_register_throttle_window_expires(client, clock):
         register(client, f"user{i}")
     clock.advance(timedelta(minutes=61))
     assert register(client, "late").status_code == 302
+
+def test_login_throttle_blocks_spraying_across_five_distinct_usernames(client, clock):
+    for name in ("alice", "bob", "carol", "dave", "eve"):
+        register(client, name)
+    for name in ("alice", "bob", "carol", "dave", "eve"):
+        login(client, name, "wrong-pass-999")
+    response = login(client, "frank")
+    assert response.status_code == 429
+
+
+def test_spray_throttle_does_not_block_a_single_repeatedly_tried_username(client, clock):
+    register(client, "alice")
+    register(client, "bob")
+    for _ in range(5):
+        login(client, "alice", "wrong-pass-999")
+    assert login(client, "bob", "test-pass-123").status_code == 302
