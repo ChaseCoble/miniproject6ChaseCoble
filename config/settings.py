@@ -1,3 +1,7 @@
+# INF601 - Advanced Programming in Python
+# Chase Coble
+# Mini Project 6
+
 """
 Django settings for config project.
 
@@ -37,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'threatintel',
 ]
 
 MIDDLEWARE = [
