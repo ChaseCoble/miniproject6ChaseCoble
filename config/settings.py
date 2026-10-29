@@ -18,6 +18,7 @@ import os
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.csp import CSP
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -64,6 +65,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'django.middleware.csp.ContentSecurityPolicyMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -166,6 +168,17 @@ CSRF_COOKIE_SECURE = env_flag('DJANGO_SECURE_COOKIES')
 SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '0'))
 SECURE_REFERRER_POLICY = 'same-origin'
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
+
+# Strict CSP: no inline script or style anywhere, so templates load only static files
+SECURE_CSP = {
+    'default-src': [CSP.SELF],
+    'frame-ancestors': [CSP.NONE],
+    'object-src': [CSP.NONE],
+    'base-uri': [CSP.SELF],
+    'form-action': [CSP.SELF],
+    # Bootstrap's CSS draws its small icons (close button, select arrow) as data: SVGs
+    'img-src': [CSP.SELF, 'data:'],
+}
 
 
 # Email

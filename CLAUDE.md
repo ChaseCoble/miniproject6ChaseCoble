@@ -108,7 +108,7 @@ A small Django app that aggregates two public sources, CISA KEV and NVD, joined 
 - Watchlist delete: one modal per watch row, rendered server-side. The button has `data-bs-toggle="modal"`, the modal element's class attribute starts with `class="modal`, and the `<form>` inside has `method="post"` and an `action` containing `/watch/<cve_id>/delete/`. Do not set the action with JavaScript.
 - Dashboard and watchlist show CVE IDs only for the rows they list. No "recent", "top" or "related" panels. Use double-quoted `href` attributes, and render a reference link only for URLs starting with `http://` or `https://`.
 - Messages contain the exact words "unavailable" (NVD) and "already" (duplicate watch).
-
+   - Static files: Django's `staticfiles` and `{% static %}` as already used. Do not add WhiteNoise or any other package. How static files are served in production is an open decision for the user.
 ### Names to verify before relying on them (report any that differ)
 The CSP constants (`CSP.SELF`, `CSP.NONE`), the admin URL names (`admin:threatintel_vulnerability_changelist` and similar), and the exact wording of Django's login error. If one of these is wrong in the installed version, say so instead of working around it.
 
