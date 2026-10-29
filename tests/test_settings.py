@@ -158,3 +158,17 @@ def test_no_model_changes_are_missing_a_migration():
 
 def test_referrer_and_opener_policies_are_set_explicitly():
     assert read("[settings.SECURE_REFERRER_POLICY, settings.SECURE_CROSS_ORIGIN_OPENER_POLICY]") == ["same-origin", "same-origin"]
+
+
+@pytest.mark.parametrize("url", ["/x-panel/", "x-panel"])
+def test_malformed_admin_urls_are_refused(url):
+    assert refuses(DJANGO_ADMIN_URL=url).returncode != 0
+
+
+def test_non_numeric_hsts_seconds_are_refused():
+    assert refuses(DJANGO_HSTS_SECONDS="soon").returncode != 0
+
+
+@pytest.mark.parametrize("hosts", [",", " , "])
+def test_blank_allowed_hosts_are_refused(hosts):
+    assert refuses(DJANGO_ALLOWED_HOSTS=hosts).returncode != 0

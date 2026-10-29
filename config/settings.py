@@ -53,7 +53,7 @@ if not ADMIN_URL.endswith('/') or ADMIN_URL.startswith('/'):
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    'config.apps.ThrottledAdminConfig',  # django.contrib.admin with a throttled login
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
