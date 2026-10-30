@@ -70,11 +70,35 @@ set -a; source .env.local; set +a
 Confirm `.env.local` (or whatever name you use) is covered by `.gitignore` before creating
 it — this file will contain a real secret key and must never be committed.
 
-Then apply migrations and run the app:
+Then apply migrations, create the database-backed cache table, and run the app:
 ```bash
 python manage.py migrate
+python manage.py createcachetable
 python manage.py runserver
 ```
+
+`createcachetable` is a one-time step, separate from `migrate` — Django's database-backed
+cache (used here to back the rate limiters) is not managed by the normal migration system,
+so skipping this step produces a confusing `OperationalError: no such table` on the first
+request that touches a rate-limited view (registration, login) rather than on startup. Run
+it once per fresh database; running it again against a database that already has the table
+will error, so don't add it to a script that runs on every deploy.
+
+### Deploying with `DEBUG=False`
+
+Django's development server (`runserver`) only serves static files automatically when
+`DEBUG=True`. Any deployment running with `DEBUG=False` — which this project's security
+posture requires outside of local development — needs an explicit step to serve them
+instead. This project uses [whitenoise](https://whitenoise.readthedocs.io/) for that:
+
+```bash
+pip install -r requirements.txt   # includes whitenoise
+python manage.py collectstatic --noinput
+```
+
+`collectstatic` must be re-run after any change to static assets or to the `STORAGES`
+setting in `settings.py`, since it's what builds the hashed-filename manifest whitenoise
+serves from.
 
 ## Running the tests
 
